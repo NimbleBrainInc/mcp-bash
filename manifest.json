@@ -1,7 +1,7 @@
 {
   "manifest_version": "0.4",
   "name": "@nimblebraininc/bash",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Execute bash commands via MCP",
   "author": {
     "name": "NimbleBrain Inc",
