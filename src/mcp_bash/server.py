@@ -7,13 +7,16 @@ import subprocess
 import sys
 import time
 
-from fastmcp import Context, FastMCP
+from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from .api_models import BashExecResponse
 
-# Debug logging for container diagnostics
+# Debug logging for container diagnostics. Diagnostics go to stderr (stdout is reserved for
+# JSON-RPC), never to the client: MCP's logging capability is deprecated as of the 2026-07-28
+# protocol (SEP-2577). A failure the caller must see is raised as a ToolError.
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -72,7 +75,6 @@ async def bash_exec(
     cwd: str | None = None,
     timeout: int = 30,
     env: dict[str, str] | None = None,
-    ctx: Context | None = None,
 ) -> BashExecResponse:
     """Execute a bash command and return stdout, stderr, exit code, and duration.
 
@@ -81,7 +83,6 @@ async def bash_exec(
         cwd: Working directory (defaults to server's cwd)
         timeout: Timeout in seconds (default 30, max 600)
         env: Additional environment variables to set
-        ctx: MCP context
 
     Returns:
         Command output with stdout, stderr, exit code, and duration
@@ -90,7 +91,7 @@ async def bash_exec(
     if cwd is not None:
         real_cwd = os.path.realpath(cwd)
         if not os.path.isdir(real_cwd):
-            raise ValueError(f"Working directory does not exist: {cwd}")
+            raise ToolError(f"Working directory does not exist: {cwd}")
         cwd = real_cwd
 
     # Clamp timeout
@@ -101,8 +102,8 @@ async def bash_exec(
     if env:
         run_env.update(env)
 
-    if ctx:
-        await ctx.info(f"Executing: {command[:100]}...")
+    # The command text is not logged: it can carry secrets, and the caller already has it.
+    logger.info("bash_exec: running a command (timeout %ss)", timeout)
 
     start = time.monotonic()
 
