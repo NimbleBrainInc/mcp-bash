@@ -85,12 +85,11 @@ async def test_bash_exec_timeout(mcp_server):
 async def test_bash_exec_invalid_cwd(mcp_server):
     """Test invalid working directory raises error."""
     async with Client(mcp_server) as client:
-        with pytest.raises(Exception) as exc_info:
-            await client.call_tool("bash_exec", {"command": "pwd", "cwd": "/nonexistent"})
-        assert (
-            "does not exist" in str(exc_info.value).lower()
-            or "nonexistent" in str(exc_info.value).lower()
+        result = await client.call_tool(
+            "bash_exec", {"command": "pwd", "cwd": "/nonexistent"}, raise_on_error=False
         )
+        assert result.is_error
+        assert "Working directory does not exist: /nonexistent" in result.content[0].text
 
 
 @pytest.mark.asyncio
